@@ -33,10 +33,12 @@ impl Config {
                     })
                     .collect::<Vec<&&str>>();
 
+                println!("{:?}", keys_vals);
+
                 if !HEADERS.iter().all(|item| {
                     keys_vals
                         .iter()
-                        .map(|l| l.split('=').collect::<Vec<&str>>()[0])
+                        .map(|l| l.split('=').collect::<Vec<&str>>()[0].trim())
                         .collect::<Vec<&str>>()
                         .contains(item)
                 }) {
