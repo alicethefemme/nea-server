@@ -9,7 +9,7 @@ pub struct Metrics {
 }
 
 const HEADERS: [&str; 1] = ["METRIC_LOGGING_INTERVAL"];
-const SERVER_CONF_FILE_LINK: &str = "abcabc";
+const SERVER_CONF_FILE_LINK: &str = "https://raw.githubusercontent.com/alicethefemme/nea-server/b79bcb2/server.conf";
 
 impl Config {
     pub fn new(config_file_path: &str) -> Config {
