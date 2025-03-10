@@ -1,7 +1,10 @@
+use std::net::IpAddr;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 
 pub struct Config {
+    pub ip_addr: IpAddr,
+    pub port: i32,
     pub metrics: Metrics,
 }
 
@@ -9,8 +12,8 @@ pub struct Metrics {
     pub logging_interval: i8,
 }
 
-const HEADERS: [&str; 1] = ["METRIC_LOGGING_INTERVAL"];
-const SERVER_CONF_FILE_LINK: &str = "https://raw.githubusercontent.com/alicethefemme/nea-server/dc9514e/server.conf";
+const HEADERS: [&str; 3] = ["bind_ip", "bind_port", "metric_logging_interval"];
+const SERVER_CONF_FILE_LINK: &str = "https://raw.githubusercontent.com/alicethefemme/nea-server/99de1f2/server.conf";
 
 impl Config {
     pub async fn new(config_file_path: &str) -> Config {
@@ -36,8 +39,6 @@ impl Config {
                     })
                     .collect::<Vec<&&str>>();
 
-                println!("{:?}", keys_vals);
-
                 if !HEADERS.iter().all(|item| {
                     keys_vals
                         .iter()
@@ -50,6 +51,8 @@ impl Config {
                 }
 
                 let mut config = Config {
+                    ip_addr: IpAddr::V4("0.0.0.0".parse().unwrap()),
+                    port: 8080,
                     metrics: Metrics {
                         logging_interval: 0,
                     },
@@ -61,8 +64,36 @@ impl Config {
                     let key = l[0].trim();
                     let value = l[1].trim();
 
+                    //TODO: Update changes to check value types for options.
                     match key {
-                        "METRIC_LOGGING_INTERVAL" => {
+                        "bind_ip" => {
+                            let items = value.split(".").map(|i| i.trim().parse::<u8>().unwrap()).collect::<Vec<u8>>();
+
+                            if items.len() != 4 {
+                                panic!("Unable to read ip_addr. Please format in 0.0.0.0 where 0 can be between 0 and 255.")
+                            }
+
+                            for item in items {
+                                if item<0 || item>255 {
+                                    panic!("Unable to read ip_addr. Please format in 0.0.0.0 where 0 can be between 0 and 255.")
+                                }
+                            }
+
+                            config.ip_addr = IpAddr::V4(value.parse().unwrap());
+                        },
+                        "bind_port" => {
+                            match value.parse::<i32>() {
+                                Ok(port) => {
+                                    if port<1 || port>65535 {
+                                        panic!("Unable to read port. Please ensure it is a number between 1 and 65535.")
+                                    }
+
+                                    config.port = port;
+                                }
+                                Err(e) => {panic!("Unable to read port. Please ensure it is a number between 1 and 65535.")}
+                            }
+                        }
+                        "metric_logging_interval" => {
                             config.metrics.logging_interval = value.parse::<i8>().unwrap();
                         }
                         &_ => {

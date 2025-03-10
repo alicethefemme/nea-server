@@ -11,10 +11,12 @@ async fn main() {
     println!("Getting config...");
     let config = config::Config::new("test.conf").await;
 
+    println!("Server is running on {:?}:{:?}", config.ip_addr, config.port);
     HttpServer::new(|| {
         App::new()
             .service(ping)
-    }).bind("127.0.0.1:8080").unwrap()
+    }).bind(format!("{:?}:{:?}", config.ip_addr, config.port)).unwrap()
         .run().await.unwrap();
+
 
 }
