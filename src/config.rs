@@ -1,4 +1,5 @@
-use std::fs;
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
 
 pub struct Config {
     pub metrics: Metrics,
@@ -12,11 +13,13 @@ const HEADERS: [&str; 1] = ["METRIC_LOGGING_INTERVAL"];
 const SERVER_CONF_FILE_LINK: &str = "https://raw.githubusercontent.com/alicethefemme/nea-server/dc9514e/server.conf";
 
 impl Config {
-    pub fn new(config_file_path: &str) -> Config {
+    pub async fn new(config_file_path: &str) -> Config {
         /// Read the file and check against the predefined headers. If they don't match, replace the original file and throw error.
+
+
         env_logger::init();
 
-        match fs::read_to_string(&config_file_path) {
+        match tokio::fs::read_to_string(&config_file_path).await {
             Ok(content) => {
                 // If reading the file is successful.
                 let lines = content.split('\n').collect::<Vec<&str>>();
@@ -43,7 +46,7 @@ impl Config {
                         .contains(item)
                 }) {
                     // Not all the headers are found.
-                    create_config_file(config_file_path);
+                    create_config_file(config_file_path).await;
                 }
 
                 let mut config = Config {
@@ -74,16 +77,16 @@ impl Config {
             }
             Err(_) => {
                 // File doesn't exist or error reading file as invalid format. Process to download new file.
-                create_config_file(config_file_path);
+                create_config_file(config_file_path).await;
                 std::process::exit(1);
             }
         }
     }
 }
 
-fn create_config_file(config_file_path: &str) {
+async fn create_config_file(config_file_path: &str) {
     println!("Config file doesn't exist. Downloading now!");
-    match fs::write(config_file_path, download_config_file()) {
+    match tokio::fs::write(config_file_path, download_config_file().await).await {
         Ok(_) => {
             println!("Wrote default config file! Exiting program now.");
             std::process::exit(1);
@@ -97,29 +100,29 @@ fn create_config_file(config_file_path: &str) {
     }
 }
 
-fn download_config_file() -> String {
+async fn download_config_file() -> String {
     let mut downloaded = false;
     let mut response_text = String::from("");
 
     while !downloaded {
-        match reqwest::blocking::get(SERVER_CONF_FILE_LINK) {
+        match reqwest::get(SERVER_CONF_FILE_LINK).await {
             Ok(response) => {
                 if !response.status().is_success() {
                     // Sleep 5 secs and retry.
                     println!(
                         "Unable to download the new config file. Waiting, and trying again..."
                     );
-                    std::thread::sleep(core::time::Duration::new(5, 0));
+                    tokio::time::sleep(core::time::Duration::new(5, 0)).await;
                     continue;
                 }
 
-                response_text = response.text().unwrap();
+                response_text = response.text().await.unwrap();
                 downloaded = true;
             }
             Err(_) => {
                 // Unable to make request for some reason.
                 println!("Unable to download the new config file. Waiting, and trying again...");
-                std::thread::sleep(core::time::Duration::new(5, 0));
+                tokio::time::sleep(core::time::Duration::new(5, 0)).await;
                 continue;
             }
         }
