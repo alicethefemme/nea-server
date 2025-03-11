@@ -1,10 +1,9 @@
 use std::net::IpAddr;
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
 
 pub struct Config {
     pub ip_addr: IpAddr,
     pub port: i32,
+    pub database_path: String,
     pub metrics: Metrics,
 }
 
@@ -12,8 +11,8 @@ pub struct Metrics {
     pub logging_interval: i8,
 }
 
-const HEADERS: [&str; 3] = ["bind_ip", "bind_port", "metric_logging_interval"];
-const SERVER_CONF_FILE_LINK: &str = "https://raw.githubusercontent.com/alicethefemme/nea-server/99de1f2/server.conf";
+const HEADERS: [&str; 4] = ["bind_ip", "bind_port", "metric_logging_interval", "database_path"];
+const SERVER_CONF_FILE_LINK: &str = "https://raw.githubusercontent.com/alicethefemme/nea-server/15f461b/server.conf";
 
 impl Config {
     pub async fn new(config_file_path: &str) -> Config {
@@ -53,6 +52,7 @@ impl Config {
                 let mut config = Config {
                     ip_addr: IpAddr::V4("0.0.0.0".parse().unwrap()),
                     port: 8080,
+                    database_path: "./database.db".parse().unwrap(),
                     metrics: Metrics {
                         logging_interval: 0,
                     },
@@ -90,11 +90,14 @@ impl Config {
 
                                     config.port = port;
                                 }
-                                Err(e) => {panic!("Unable to read port. Please ensure it is a number between 1 and 65535.")}
+                                Err(_) => {panic!("Unable to read port. Please ensure it is a number between 1 and 65535.")}
                             }
                         }
                         "metric_logging_interval" => {
                             config.metrics.logging_interval = value.parse::<i8>().unwrap();
+                        }
+                        "database_path" => {
+                            config.database_path = value.parse().unwrap();
                         }
                         &_ => {
                             println!(
