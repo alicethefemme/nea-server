@@ -1,8 +1,17 @@
+use std::sync::Once;
 use crate::handlers::authentication::get_tfa_for_user;
 use crate::handlers::ping::ping;
 use crate::tools::db::DB;
 use crate::tools::state::AppState;
 use actix_web::{App, HttpServer, web};
+use chrono::Utc;
+use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
+use log4rs::append::rolling_file::policy::compound::trigger::time::{TimeTrigger, TimeTriggerConfig};
+use log4rs::append::rolling_file::RollingFileAppender;
+use log::info;
+use tracing::{error, Level};
+use tracing_appender::rolling;
+use tracing_subscriber::FmtSubscriber;
 
 mod config;
 mod handlers;
@@ -36,4 +45,19 @@ async fn main() {
     .run()
     .await
     .unwrap();
+}
+
+/// Initialize the loggers and get them ready for use.
+fn init_loggers() {
+    Once::new().call_once(|| {
+        let file_appender = rolling::daily("./logs", "logfile");
+        let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+        let subscriber = FmtSubscriber::builder()
+            .with_max_level(Level::INFO)
+            .with_writer(non_blocking)
+            .finish();
+
+        tracing::subscriber::set_global_default(subscriber).unwrap();
+    });
 }

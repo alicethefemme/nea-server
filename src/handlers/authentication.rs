@@ -1,5 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use serde::Deserialize;
+use sqlx::Error;
 use crate::tools::state::AppState;
 
 
@@ -11,10 +12,15 @@ struct UserTfa {
 #[get("/api/authentication/get_tfa")]
 pub async fn get_tfa_for_user(data: web::Data<AppState>, user_tfa: web::Json<UserTfa>) -> impl Responder {
     let username = &user_tfa.username;
-
-    //TODO: Connect to database and check for user. If user exists, check if 2fa is enabled on their account.
     let db = &data.db;
-    db.get_tfa_status("alice".parse().unwrap()).await.unwrap();
 
-    HttpResponse::Ok()
+    match db.get_tfa_status(username.clone()).await {
+        Ok(r) => {
+            HttpResponse::Ok().body(r.to_string())
+        }
+        Err(e) => {
+            println!("[WARNING] Unable to extract column. Error: {}", e.to_string());
+            HttpResponse::Ok().body(false.to_string())
+        }
+    }
 }
