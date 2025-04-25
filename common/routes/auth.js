@@ -15,24 +15,28 @@ module.exports = (db) => {
     router.get('/get_token', async(request, response) => {
         const username = request.query.username; // Get the username from the request.
         const password = request.query.password; // Gets the password from the request.
-        const tfa_code = !!request.query.tfa_code;
+        const tfa_code = !!request.query.tfa_code; // Gets the boolean status of if there is a tfa code or not.
 
-        // Check if the username or password is null. If so, return error.
+        // Check if the username or password is null. If so, return 0.
         if(username === undefined || password === undefined) {
             return response.status(400).json({error: 'Missing username or password parameters'});
         }
 
         // Check if the user exists in the database.
-        const user = db.get_user(username);
-        if(user === undefined) {
-            return response.status(400).json({error: 'Invalid username or password parameters'});
+        const userId = db.get_user(username);
+        // Check that the user exists and has returned an ID.
+        if(!userId) {
+            return response.status(200).json({
+                status: 0
+            });
         }
 
         // User exists. Check if password is correct.
-        const userId = user.id;
-        const passwordValid = await db.check_user_password(userId, password);
+        const passwordValid = db.check_user_password(userId, password);
         if(!passwordValid) {
-            return response.status(400).json({error: 'Invalid username or password parameters'});
+            return response.status(200).json({
+                error: 0
+            });
         }
 
         // Get the requirements to make JWT.
@@ -44,9 +48,14 @@ module.exports = (db) => {
 
         if(tfa_enabled && !tfa_code) {
             // User is connected, and has a TFA enabled account, but has not provided their method.
+            // Get the TFA method from the database.
+            let tfa_method = db.get_tfa_method(userId);
+
+            // Return the result to the account.
+            if(!tfa_method) return response.status(200).json({status: 0});
             return response.status(200).json({
                 status: 2,
-                method: ''
+                method: tfa_method
             });
         } else if (tfa_enabled && tfa_code) {
             // User is connected and has provided a TFA code.
@@ -54,6 +63,7 @@ module.exports = (db) => {
         } else {
             // User doesn't have tfa. Authenticated.
 
+            // Create the token.
             const jwt_payload = {
                 userId: userId,
                 username: username,
@@ -64,34 +74,36 @@ module.exports = (db) => {
                 algorithms: 'HS256' // TODO: MAKE THIS CONFIGURABLE
             });
 
+            // Respond to the user.
             return response.status(200).json({
                 status: 1,
                 token: jwt_token
             });
         }
 
-        // Create the token for the user.
-        const payload = {
-            userId: 1,
-            username: username,
-            authenticated: true
-        };
-        return response.status(200).json({
-            token: jwt.sign(payload, secret_key, {
-                expiresIn: '1h',
-                algorithm: 'HS256' // Default and safe. // TODO: Make this configurable.
-            })
-        });
+        // // Create the token for the user.
+        // const payload = {
+        //     userId: 1,
+        //     username: username,
+        //     authenticated: true
+        // };
+        // return response.status(200).json({
+        //     token: jwt.sign(payload, secret_key, {
+        //         expiresIn: '1h',
+        //         algorithm: 'HS256' // Default and safe. // TODO: Make this configurable.
+        //     })
+        // });
     });
 
-    router.put('/create_user_password', async(request, response) => {
-       const username = request.query.username;
-       const password = request.query.password;
-
-       // Create the details in DB.
-       await db.create_user(username, password);
-       return response.status(200).json('success');
-    });
+    // USED FOR TESTING. GOOD IDEA TO USE FOR CREATING AN ACCOUNT.
+    // router.put('/create_user_password', async(request, response) => {
+    //    const username = request.query.username;
+    //    const password = request.query.password;
+    //
+    //    // Create the details in DB.
+    //    await db.create_user(username, password);
+    //    return response.status(200).json('success');
+    // });
 
     return router;
 
