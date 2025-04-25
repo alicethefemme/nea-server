@@ -26,6 +26,11 @@ module.exports = class MyDatabase {
         return statement.get(username);
     }
 
+    get_tfa_status(userId) {
+        const statement = this.db.prepare('SELECT tfa_protected FROM users WHERE id = ?');
+        return !!statement.get(userId);
+    }
+
     check_user_password(userId, password) {
         const statement = this.db.prepare('SELECT password FROM users WHERE id = ?');
         const val = statement.get(userId);
@@ -33,9 +38,10 @@ module.exports = class MyDatabase {
         if(val === undefined) return false;
 
         // Hash the user password.
-        return bcrypt.compare(password, val.password).then((err, result) => {
-            if(err) return false;
-            return (result) ? result: false;
-        })
+        return bcrypt.compare(password, val.password).then(result => {
+            return result;
+        });
     }
+
+
 }
