@@ -1,3 +1,4 @@
 /test-requests
 .env
 database.db
+.idea
