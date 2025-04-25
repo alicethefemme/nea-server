@@ -2,3 +2,4 @@
 .env
 database.db
 .idea
+node_modules
