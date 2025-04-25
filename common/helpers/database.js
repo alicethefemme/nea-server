@@ -45,6 +45,20 @@ module.exports = class MyDatabase {
     }
 
     /**
+     * Gets the current Two Factor Method for an account with its user ID.
+     * @param userId {int} The numeric ID for the account.
+     * @returns {String|null} The method for Two-Factor Authentication, or null if there isn't one enabled for the account.
+     */
+    get_tfa_method(userId) {
+        const statement = this.db.prepare('SELECT tfa_enabled, tfa_method FROM users WHERE id = ?');
+        let val = statement.get(userId);
+
+        if(!val) return null;
+        if(!val.tfa_enabled) return null;
+        return val.tfa_method;
+    }
+
+    /**
      * Checks if the user's password is valid.
      * @param userId {int} The numeric ID for the account.
      * @param password {String} The provided password for the account.
