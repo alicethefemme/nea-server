@@ -18,6 +18,12 @@ module.exports = class MyDatabase {
             '  tfa_method TEXT,' +
             '  tfa_secret TEXT' +
             ');').run();
+        this.db.prepare('CREATE TABLE IF NOT EXISTS email2fa(' +
+            '  code INTEGER PRIMARY KEY NOT NULL,' +
+            '  userId INTEGER NOT NULL,' +
+            '  validFrom INTEGER NOT NULL,' +
+            '  validTill INTEGER NOT NULL' +
+            ');').run();
     }
 
     /**
@@ -56,6 +62,27 @@ module.exports = class MyDatabase {
         if(!val) return null;
         if(!val.tfa_enabled) return null;
         return val.tfa_method;
+    }
+
+    get_tfa_secret(userId) {
+        const statement = this.db.prepare('SELECT tfa_enabled, tfa_secret FROM users WHERE id = ?');
+        let val = statement.get(userId);
+
+        if(!val) return null;
+        if(!val.tfa_enabled) return null;
+        if(!val.tfa_secret) return null;
+        return val.tfa_secret;
+    }
+
+    check_email_tfa_code(code, userId) {
+        const statement = this.db.prepare('SELECT * FROM email2fa WHERE code = ? AND userId = ?');
+        let val = statement.get(code, userId);
+
+        if(!val) return null;
+        const now = Date.now();
+        if(Number(val.validFrom) > now) return false;
+        if(Number(val.validTill) < now) return false;
+        return true;
     }
 
     /**

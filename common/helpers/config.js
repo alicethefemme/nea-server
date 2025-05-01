@@ -10,6 +10,10 @@ class Config {
     databasePath;
 
     jwtSecretKey;
+    jwtHashingMethod;
+
+    yubicoClientId;
+    yubicoSecret;
 
 
     constructor() {
@@ -30,6 +34,7 @@ class Config {
 
         // JSON Web Token variables.
         this.jwtSecretKey = (process.env.JSON_SECRET_KEY) ? process.env.JSON_SECRET_KEY : 'ThisIsASuperSecureAndSecretKey';
+        this.jwtHashingMethod = (process.env.JSON_HASHING_METHOD) ? process.env.JSON_HASHING_METHOD: 'HS256';
 
 
     }
