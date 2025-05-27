@@ -36,6 +36,10 @@ class Config {
         this.jwtSecretKey = (process.env.JSON_SECRET_KEY) ? process.env.JSON_SECRET_KEY : 'ThisIsASuperSecureAndSecretKey';
         this.jwtHashingMethod = (process.env.JSON_HASHING_METHOD) ? process.env.JSON_HASHING_METHOD: 'HS256';
 
+        // Yubico API
+        this.yubicoClientId = (process.env.YUBICO_API_CLIENT_ID) ? process.env.YUBICO_API_CLIENT_ID : null;
+        this.yubicoSecret = (process.env.YUBICO_API_SECRET) ? process.env.YUBICO_API_SECRET : null;
+
 
     }
 }

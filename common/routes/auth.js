@@ -27,13 +27,15 @@ module.exports = (db) => {
         }
 
         // Check if the user exists on the server.
-        const userId = db.get_user(username);
+        const userId = await db.get_user(username);
         if(!userId) {
-            return response.status(401);
+            return response.status(401).send();
         }
-        const passwordValid = db.check_user_password(userId, password);
+        const passwordValid = await db.check_user_password(userId, password);
         if(!passwordValid) {
-            return response.status(401);
+            console.log('Password a\'int valid mate')
+            // TODO: Document that this required the send method.
+            return response.status(401).send();
         }
 
         // Get the requirements to make JWT.
@@ -43,12 +45,11 @@ module.exports = (db) => {
         // Check if the user account has TFA enabled.
         const tfa_enabled = db.get_tfa_status(userId);
 
-        // TODO: Create level 1 token here with response.
         if(tfa_enabled) {
             let tfa_method = db.get_tfa_method(userId);
 
             // Error occurred (failed TFA setup for account?)
-            if(!tfa_method) return response.status(500);
+            if(!tfa_method) return response.status(500).send();
 
             const jwt_payload = {
                 userId: userId,
@@ -102,16 +103,16 @@ module.exports = (db) => {
 
         try {
             // Check token for validity
-            const jwtPayload = jwt.verify(token, jwtSecret, {
+            const jwtPayload = await jwt.verify(token, jwtSecret, {
                 complete: true,
                 algorithms: [jwtHashingMethod],
-                issuer: 'ServerCmdr'});
+                issuer: 'ServerCmdr'
+            });
 
             const payload = jwtPayload.payload;
-
             if (payload.full_authenticated) {
                 // Nothing needs doing if the user is fully authenticated
-                return response.status(400);
+                return response.status(400).send();
             }
 
             if(!code) {
@@ -119,7 +120,7 @@ module.exports = (db) => {
                 return response.status(400).json({status: 'Missing \'code\' query.'})
             }
 
-            const tfaMethodForAccount = thisDB.get_tfa_method(payload.userId);
+            const tfaMethodForAccount = await thisDB.get_tfa_method(payload.userId);
 
             //TODO: Move payload generation up here, make a call to get the permissions for the user to provide in the JWT.
 
@@ -128,30 +129,31 @@ module.exports = (db) => {
                     // Yubikey based authentication is being used.
                     const yubikey_client_id = thisConfig.yubicoClientId;
                     const yubikey_secret = thisConfig.yubicoSecret;
-
                     if(!yubikey_client_id || !yubikey_secret) {
                         // There is no client ID or secret. Throw an error.
-                        return response.status(500);
+                        return response.status(401).send();
                     }
 
                     // Initialise the API to connect to the Yubikey Server
                     try {
-                        yub.init(yubikey_client_id, yubikey_secret);
+                        await yub.init(yubikey_client_id, yubikey_secret);
                     } catch (err) {
-                        return response.code(500);
+                        return response.status(500).send();
                     }
 
                     // Verify the key
                     return yub.verify(code, (err, data) => {
-                        if(err) return response.code(500);
+                        if(err) return response.status(500).send();
+
+                        console.log(data);
 
                         // Checks if the Yubikey servers authenticated the provided OTP correctly.
-                        if(!data.valid) return response.code(401);
+                        if(!data.valid) return response.status(401).send();
 
                         const yubikeyUserSecret = thisDB.get_tfa_secret(payload.userId);
-                        if(!yubikeyUserSecret) return response.code(500);
+                        if(!yubikeyUserSecret) return response.status(401).send();
 
-                        if(data.identity !== yubikeyUserSecret) return response.code(401);
+                        if(data.identity !== yubikeyUserSecret) return response.status(401).send();
 
                         // Yay! The Yubikey is valid, and belongs to this user. Return the JWT.
                         try {
@@ -168,25 +170,25 @@ module.exports = (db) => {
                                 issuer: 'ServerCmdr'
                             });
 
-                            return response.code(200).json({token: jwt_token})
+                            return response.status(200).json({token: jwt_token})
 
 
                         } catch (error) {
-                            return response.code(500);
+                            return response.status(500).send();
                         }
                     })
                 }
                 case 'auth_code': {
                     // User is using a code from their TFA app.
-                    const authCodeSecret = thisDB.get_tfa_secret(payload.userId);
+                    const authCodeSecret = await thisDB.get_tfa_secret(payload.userId);
 
-                    const status = twoFactor.verifyToken(authCodeSecret, code, 2);
+                    const status = await twoFactor.verifyToken(authCodeSecret, code, 2);
 
                     // Check if there is a valid two-factor code provided
-                    if(!status) return response.code(401);
+                    if(!status) return response.status(401).send();
 
                     // Check that the code is the right code provided at the right time.
-                    if(status.delta !== 0) return response.code(401);
+                    if(status.delta !== 0) return response.status(401).send();
 
                     try {
                         const jwt_payload = {
@@ -196,22 +198,22 @@ module.exports = (db) => {
                             permissions: []
                         }
 
-                        const jwt_token = jwt.sign(jwt_payload, jwtSecret, {
+                        const jwt_token = await jwt.sign(jwt_payload, jwtSecret, {
                             expiresIn: '1h',
                             algorithm: thisConfig.jwtHashingMethod,
                             issuer: 'ServerCmdr'
                         });
 
-                        return response.code(200).json({token: jwt_token});
+                        return await response.status(200).json({token: jwt_token});
                     } catch (err) {
-                        return response.code(500);
+                        return response.status(500).send();
                     }
 
                 } case 'email_code': {
                     // User is using a code from an email. Check code for validity.
-                    const codeValid = thisDB.check_email_tfa_code(code, payload.userId);
+                    const codeValid = await thisDB.check_email_tfa_code(code, payload.userId);
 
-                    if(!codeValid) return response.status(401);
+                    if(!codeValid) return response.status(401).send();
 
                     try {
                         const jwt_payload = {
@@ -221,13 +223,13 @@ module.exports = (db) => {
                             permissions: []
                         }
                     } catch (err) {
-                        return response.code(500);
+                        return response.status(500).send();
                     }
                 }
             }
 
         } catch (err) {
-            return response.status(401);
+            return response.status(401).send();
         }
 
     })

@@ -39,6 +39,18 @@ module.exports = class MyDatabase {
     }
 
     /**
+     * Checks to see if the user exists in the database or not.
+     * @param userId
+     * @returns {boolean}
+     */
+    user_exists(userId) {
+        const statement = this.db.prepare('SELECT * FROM users WHERE id = ?');
+        let val = statement.get(userId);
+        return !!val;
+
+    }
+
+    /**
      * Gets the current Two Factor status for an account with its user ID.
      * @param userId {int} The numeric ID for the account.
      * @returns {boolean} The status of the account having TFA.
@@ -89,19 +101,17 @@ module.exports = class MyDatabase {
      * Checks if the user's password is valid.
      * @param userId {int} The numeric ID for the account.
      * @param password {String} The provided password for the account.
-     * @returns {boolean} The status of the password being valid.
+     * @returns {Promise<boolean>} The status of the password being valid.
      */
-    check_user_password(userId, password) {
+    async check_user_password(userId, password) {
         const statement = this.db.prepare('SELECT password FROM users WHERE id = ?');
-        const val = statement.get(userId);
+        const val = await statement.get(userId);
 
         // Check that a value has been provided.
         if(!val) return false;
 
         // Check the hash of the user password.
-        return bcrypt.compare(password, val.password).then(result => {
-            return result;
-        });
+        return await bcrypt.compare(password, val.password)
     }
 
 
