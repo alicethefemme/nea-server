@@ -13,13 +13,15 @@ module.exports = (db) => {
     /**
      * /auth/get_token endpoint.
      * Returns:
-     *  - (200) with headers: status (0 for invalid credentials, 1 for valid and successful login, 2 for requires TFA), [OPTIONAL] method (email, authenticator, yubikey), [OPTIONAL] token
+     *  - (200) with headers: status (--0 for invalid credentials--, 1 for valid and successful login, 2 for requires TFA), [OPTIONAL] method (email, authenticator, yubikey), [OPTIONAL] token
      *  - (400) with headers: error (Missing username or password parameters)
-     *  - (401)
+     *  - (401): Invalid credentials or user.
      */
     router.get('/login', async(request, response) => {
         const username = request.query.username; // Get the username from the request.
         const password = request.query.password; // Gets the password from the request.
+
+        console.log(`${username} - ${password}`);
 
         // Check if the username or password is null. If so, return 0.
         if(username === undefined || password === undefined) {
@@ -33,8 +35,6 @@ module.exports = (db) => {
         }
         const passwordValid = await db.check_user_password(userId, password);
         if(!passwordValid) {
-            console.log('Password a\'int valid mate')
-            // TODO: Document that this required the send method.
             return response.status(401).send();
         }
 
@@ -209,7 +209,8 @@ module.exports = (db) => {
                         return response.status(500).send();
                     }
 
-                } case 'email_code': {
+                } 
+                case 'email_code': {
                     // User is using a code from an email. Check code for validity.
                     const codeValid = await thisDB.check_email_tfa_code(code, payload.userId);
 
