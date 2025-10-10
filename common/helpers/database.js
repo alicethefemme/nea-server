@@ -50,7 +50,7 @@ module.exports = class MyDatabase {
      * @returns {boolean}
      */
     user_exists(userId) {
-        const statement = this.db.prepare('SELECT * FROM users WHERE id = ?');
+        const statement = this.db.prepare('SELECT username FROM users WHERE id = ?');
         let val = statement.get(userId);
         return !!val;
 

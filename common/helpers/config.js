@@ -5,6 +5,10 @@ class Config {
     bindIp;
     bindPort;
 
+    httpsEnabled;
+    httpsCertFile;
+    httpsCertKey;
+
     metricLoggingInterval;
 
     databasePath;
@@ -17,14 +21,17 @@ class Config {
 
 
     constructor() {
-        // TODO: Use all of the configs here from a .ENV file using dotenv modules, instead of reading a custom file.
-
         // Use dotenv to load the file.
         dotenv.config();
 
         // Collect together the variables required.
         this.bindIp = (process.env.BIND_IP) ? process.env.BIND_IP : '0.0.0.0';
         this.bindPort = (process.env.BIND_PORT) ? process.env.BIND_PORT : '5000';
+
+        // Files to enable HTTPS.
+        this.httpsEnabled = (!!process.env.HTTPS_CERT_FILE) && (!!process.env.HTTPS_CERT_KEY);
+        this.httpsCertFile = process.env.HTTPS_CERT_FILE;
+        this.httpsCertKey = process.env.HTTPS_CERT_KEY;
 
         // Metric variables
         this.metricLoggingInterval = (process.env.METRIC_LOGGING_INTERVAL) ? process.env.METRIC_LOGGING_INTERVAL : '5';
